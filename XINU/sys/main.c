@@ -1,402 +1,171 @@
-/* main.c - main */
-
 #include <conf.h>
 #include <kernel.h>
 #include <proc.h>
 #include <stdio.h>
-#include <mem.h>
+#include <disk.h>
 
-void halt();
-extern SYSCALL freememgb(struct mblock* block, unsigned size);
-extern WORD* getmemgb(unsigned nbytes);
+#define BUCKET_SIZE	1024
 
-// Function prototypes
-// Utility methods
-unsigned get_free_memsize();
-void assert(Bool condition, char* message);
+volatile int process_count = 0;
+static int bucket[BUCKET_SIZE];
 
-// Single process test cases
-void single_allocate_and_free_test();
-void single_allocate_and_not_free_test();
-void single_free_without_allocating_test();
-void single_allocate_and_suicide_test();
-void single_allocate_and_free_and_suicide_test();
-void allocate_and_free_invalid_address_length_test();
-void allocate_n_times_and_free_m_test();
+void	halt();
 
-// Multiple process allocate/free
-void allocate_in_main_free_in_another();
+int	skewed_rand(void);
+Bool	test1(void);
+Bool	test2(void);
+Bool	test3(void);
+Bool	test4(void);
+Bool	test5(void);
 
-// Allocation/freeing scenarios
-void allocate_and_free(char *name, int numblocks);
-void allocate_and_not_free(char *name, int numblocks);
-void free_without_allocating(char *name, int numblocks);
-void allocate_and_suicide(char *name, int numblocks);
-void allocate_and_free_and_suicide(char *name, int numblocks);
-void allocate_and_free_invalid_address(char *name, int numblocks);
-void allocate_and_free_invalid_length(char *name, int numblocks);
-void free_mem(char* name, int * ptr, int numblocks);
-void allocate_n_times_and_free_m(char* name, int total_blks, int blks_to_free, int blk_size);
+int	process1(char c);
+int	process2(char c);
+int	process3(char c);
 
+int main() {
+	Bool success = FALSE;
 
-/*------------------------------------------------------------------------
- *  main  --  user main program
- *------------------------------------------------------------------------
- */
-int main()
-{
- 
-		single_allocate_and_free_test();
-		single_allocate_and_not_free_test();
-        single_free_without_allocating_test();
-        single_allocate_and_suicide_test();
-        single_allocate_and_free_and_suicide_test();
-	allocate_and_free_invalid_address_length_test();	
-	allocate_in_main_free_in_another();
-	allocate_n_times_and_free_m_test();
+	test1();
+//	test2();
+//	test3();
+//	test4();
+//	test5();
 
 	return 0;
 }
 
-// Single process test cases
-void single_allocate_and_free_test()
-{
-        int proc;
-        unsigned pre_memsize, post_memsize;
+Bool test1(void) {
+	int processA, processB;
+	int disk = DISK0;
 
-        kprintf("\nTest : single_allocate_and_free\n");
-        kprintf("Before : Free mem size = %ld\n", 
-                (pre_memsize = get_free_memsize()));
+	open(disk, 0, 0);
 
-        resume(proc = create(allocate_and_free, 2000, 20, "A", 2, 
-                                                        "A", 50));
-        
-        kill(proc);
-        kprintf("After : Free mem size = %ld\n", 
-                (post_memsize = get_free_memsize()));
+	resume(processA = create(process1, 2000, 30, "Process A", 1, (char)disk));
+	resume(processB = create(process1, 2000, 30, "Process B", 1, (char)disk));
 
-        assert((post_memsize - pre_memsize) == 0,
-                "Test failed\n");
+	while(process_count < 2);
+	close(disk);
+
+	return TRUE;
 }
 
-void single_allocate_and_not_free_test()
-{
-        int proc;
-        unsigned pre_memsize, post_memsize;
+Bool test2(void) {
+	int processA, processB;
+	int disk = DISK0;
 
-        kprintf("\nTest : single_allocate_and_not_free\n");
-        kprintf("Before : Free mem size = %ld\n", 
-                (pre_memsize = get_free_memsize()));
-
-        resume(proc = create(allocate_and_not_free, 2000, 20, "A", 2, 
-                                                        "A", 50));
-
-        kill(proc);        
-        kprintf("After : Free mem size = %ld\n", 
-                (post_memsize = get_free_memsize()));
-
-        assert((post_memsize - pre_memsize) == 0,
-                "Test failed\n");
-}
-
-void single_free_without_allocating_test()
-{
-        int proc;
-        unsigned pre_memsize, post_memsize;
-
-        kprintf("\nTest : single_free_witout_allocating\n");
-        kprintf("Before : Free mem size = %ld\n", 
-                (pre_memsize = get_free_memsize()));
-        
-        resume(proc = create(free_without_allocating, 2000, 20, "A", 2, 
-                                                        "A", 50));
-
-        kill(proc);
-        kprintf("After : Free mem size = %ld\n", 
-                (post_memsize = get_free_memsize()));
-
-        assert((post_memsize - pre_memsize) == 0, 
-                "Test failed\n");
-}
-
-void single_allocate_and_suicide_test()
-{
-        int proc;
-        unsigned pre_memsize, post_memsize;
-
-        kprintf("\nTest : single_allocate_and_suicide\n");
-        kprintf("Before : Free mem size = %ld\n", 
-                (pre_memsize = get_free_memsize()));
-        
-        resume(proc = create(allocate_and_suicide, 2000, 20, "A", 2, 
-                                                        "A", 50));
-        
-        kprintf("After : Free mem size = %ld\n", 
-                (post_memsize = get_free_memsize()));
-
-        assert((post_memsize - pre_memsize) == 0, 
-                "Test failed\n");
-}
-
-void single_allocate_and_free_and_suicide_test()
-{
-        int proc;
-        unsigned pre_memsize, post_memsize;
-
-        kprintf("\nTest : single_allocate_and_free_and_suicide\n");
-        kprintf("Before : Free mem size = %ld\n", 
-                (pre_memsize = get_free_memsize()));
-        
-        resume(proc = create(allocate_and_free_and_suicide, 2000, 20, "A", 2, 
-                                                        "A", 50));
-        
-        kprintf("After : Free mem size = %ld\n", 
-                (post_memsize = get_free_memsize()));
-
-        assert((post_memsize - pre_memsize) == 0, 
-                "Test failed\n");
-}
-
-void allocate_and_free_invalid_address_length_test()
-{
-        int proc;
-        unsigned pre_memsize, post_memsize;
-
-        kprintf("\nTest : allocate_and_free_invalid_address_length_test\n");
-        kprintf("\tTest1 : Free invalid address \n");
-        kprintf("\tBefore termination : Free mem size = %ld\n", 
-                (pre_memsize = get_free_memsize()));
-        
-        resume(proc = create(allocate_and_free_invalid_address, 2000, 20, "A", 2, 
-                                                        "A", 50));
-        
-        kprintf("\tAfter termination : Free mem size = %ld\n", 
-                (post_memsize = get_free_memsize()));
-
-        assert((post_memsize - pre_memsize) == 0, 
-                "\tTest failed\n");
-
-
-        kprintf("\n\tTest2 : Free invalid length \n");
-	kprintf("\tBefore termination : Free mem size = %ld\n", 
-                (pre_memsize = get_free_memsize()));
-        
-        resume(proc = create(allocate_and_free_invalid_length, 2000, 20, "A", 2, 
-                                                        "A", 50));
-        
-        kprintf("\tAfter termination : Free mem size = %ld\n", 
-                (post_memsize = get_free_memsize()));
-
-        assert((post_memsize - pre_memsize) == 0, 
-                "\tTest failed\n");
-
-}
-
-void allocate_in_main_free_in_another()
-{
-	int proc;
-	int* ptr;
-        unsigned pre_memsize, post_memsize;
-
-        kprintf("\nTest : allocate_in_main_free_in_another\n");
-        kprintf("Before : Free mem size = %ld\n",
-                (pre_memsize = get_free_memsize()));
-
-	ptr = (int *)getmemgb(50*sizeof(int));
-
-        resume(proc = create(free_mem, 2000, 20, "A", 3,
-                                         	"A", ptr, 50));
-    
-        freememgb(ptr, 50*sizeof(int));
-    
-        kprintf("After : Free mem size = %ld\n",
-                (post_memsize = get_free_memsize()));
-
-        assert((post_memsize - pre_memsize) == 0,
-                "Test failed\n");
-
-}
-
-void allocate_n_times_and_free_m_test()
-{
-        int proc;
-        unsigned pre_memsize, post_memsize;
-	int n = 1000;
-	int m = 21;
-	int blk_size = 500;
-	//int blk_size = 10000; 	// NOTE: Try with large block size also
-
-        kprintf("\nTest : allocate_n_times_and_free_m_test\n");
-        kprintf("Before : Free mem size = %ld\n", 
-                (pre_memsize = get_free_memsize()));
-
-        resume(proc = create(allocate_n_times_and_free_m, 2000, 20, "A", 4, 
-                                                        "A", n, m, blk_size));
-       
-	sleep(7); 
-        kill(proc);
-        kprintf("After : Free mem size = %ld\n", 
-                (post_memsize = get_free_memsize()));
-
-        assert((post_memsize - pre_memsize) == 0,
-                "Test failed\n");
-
-}
-
-// Memory allocation and freeing scenarios
-void allocate_and_free(char* name, int numblocks)
-{
-        int* ptr;
-        kprintf("Process %s\n", name);
-
-        ptr = (int *)getmemgb(numblocks*sizeof(int));
-		//getmemgb(numblocks*sizeof(int));
-        freememgb(ptr, numblocks*sizeof(int));
-}
-
-void allocate_and_not_free(char* name, int numblocks)
-{
-        int* ptr;
-
-        kprintf("Process %s\n", name);
-
-        ptr = (int *)getmemgb(numblocks*sizeof(int));
-}
-
-void free_without_allocating(char* name, int numblocks)
-{
-        int* ptr;
-
-        kprintf("Process %s\n", name);
-
-        // TODO: What happens when free is called with a size greater than that 
-        //      originally allocated to ptr?
-        freememgb(ptr, numblocks*sizeof(int));
-}
-
-void allocate_and_suicide(char *name, int numblocks)
-{
-        int* ptr;
-
-        kprintf("Process %s\n", name);
-
-        ptr = (int *)getmemgb(numblocks*sizeof(int));
-
-        kill(currpid);
-}
-
-void allocate_and_free_and_suicide(char *name, int numblocks)
-{
-        int* ptr;
-
-        kprintf("Process %s\n", name);
-
-        ptr = (int *)getmemgb(numblocks*sizeof(int));
-
-        freememgb(ptr, numblocks*sizeof(int));
-
-        kill(currpid);
-}
-
-
-void allocate_and_free_invalid_address(char *name, int numblocks)
-{
-        int* ptr;
-        kprintf("\tProcess %s\n", name);
-        ptr = (int *)getmemgb(numblocks*sizeof(int));
-        if(freememgb(ptr+1, numblocks*sizeof(int)) == SYSERR) {
-        
-		kprintf("\tCorrect Behavior on passing invalid address to freememgb. Got SYSERR. Expected SYSERR. \n");
-	} else {
-
-		kprintf("\tIncorrect Behavior on passing invalid address to freememgb. Got OK. Expected SYSERR. \n");
-	}
-}
-
-void allocate_and_free_invalid_length(char *name, int numblocks)
-{
-        int* ptr;
-        kprintf("\tProcess %s\n", name);
-        ptr = (int *)getmemgb(numblocks*sizeof(int));
-        if(freememgb(ptr, numblocks*sizeof(int) - 1) == SYSERR) {
-        
-		kprintf("\tCorrect Behavior on passing invalid address to freememgb. Got SYSERR. Expected SYSERR. \n");
-	} else {
-
-		kprintf("\tIncorrect Behavior on passing invalid address to freememgb. Got OK. Expected SYSERR. \n");
-	}
-}
-
-void free_mem(char* name, int * ptr, int numblocks)
-{
-
-		kprintf("Process %s\n", name);
-        if (freememgb(ptr, numblocks*sizeof(int)) == SYSERR) {
-		
-		kprintf("Correct Behavior. Tried deleting block belonging to another process. Got SYSERR. Expected SYSERR. \n");
-	} else {
-		
-		kprintf("Incorrect Behavior. Tried deleting block belonging to another process. Got OK. Expected SYSERR. \n");
-	}
-}
-
-void allocate_n_times_and_free_m(char* name, int total_blks, int blks_to_free, int blk_size)
-{
-	int i;
-	int* ptr;
-        kprintf("Process %s \t Block size: %d\n", name, blk_size);
+	open(disk, 0, 0);
 	
-	int ** free_block_arr = getmemgb(blks_to_free * sizeof(int *));
-	for (i=0; i<blks_to_free; i++) 
-	{
-		*(free_block_arr + i) = 0;
-	}
-	
-	for (i=0; i<total_blks; i++) 
-	{
-		*(free_block_arr + (i%blks_to_free)) = (int *) getmemgb(blk_size * sizeof(int));
-		if (*(free_block_arr + (i%blks_to_free)) == SYSERR) {
-			*(free_block_arr + (i%blks_to_free)) = 0;
+	resume(processA = create(process2, 2000, 30, "Process A", 1, (char)disk));
+	resume(processB = create(process2, 2000, 30, "Process B", 1, (char)disk));
+
+	while(process_count < 2);
+	close(disk);
+
+	return TRUE;
+}
+
+Bool test3(void) {
+	int process[8];
+	int index;
+	int disk = DISK0;
+
+	open(disk, 0, 0);
+
+	for(index = 0;index < 8;index++)
+		resume(process[index] = create(process1, 2000, 30, "Process", 1, (char)disk));
+
+	while(process_count < 8);
+	close(disk);
+
+	return TRUE;
+}
+
+Bool test4(void) {
+	int process[8];
+	int index;
+	int disk = DISK0;
+
+	open(disk, 0, 0);
+
+	for(index = 0;index < 8;index++)
+		resume(process[index] = create(process2, 2000, 30, "Process", 1, (char)disk));
+
+	while(process_count < 8);
+	close(disk);
+
+	return TRUE;
+}
+
+Bool test5(void) {
+	int process[8];
+	int index;
+	int disk = DISK0;
+
+	open(disk, 0, 0);
+
+	for(index = 0;index < 8;index++) 
+		resume(process[index] = create(process3, 2000, 30, "Process", 1, (char)disk));
+
+	while(process_count < 8);
+	close(disk);
+
+	return TRUE;
+}
+
+int skewed_rand(void) {
+	int index, random;
+
+	while(1) {
+		random = rand() % BUCKET_SIZE;
+		bucket[random]++;
+		for(index = 0;index < BUCKET_SIZE;index++) {
+			if(bucket[index] == index + 1) {
+				bucket[index] = 0;
+				return index;
+			}
 		}
 	}
+}
 
-	for (i=0; i<blks_to_free; i++) 
-	{
-		if (freememgb(*(free_block_arr + i), blk_size*sizeof(int)) == SYSERR 
-			&& *(free_block_arr + i) != 0) { 
-			kprintf("\t Error! Could not free valid block ! \n");
-		} else {
-			if(*(free_block_arr + i) != 0)
-				kprintf("\t Block Freed ! \n");
-			else 
-				kprintf("\t Null Block. Not Freed ! \n");
-		}
+int process1(char c) {
+	int index, random;
+	char ibuffer[128];
+	int disk = (int)c;
+
+	for(index = 0;index < 1024;index++) {
+		random = rand() % 1024;
+		read(disk, ibuffer, random);
 	}
-	kprintf("In allocate_n_times_and_free_m : Free mem size = %ld\n", 
-                get_free_memsize());
 
+	process_count++;
+	return process_count;
 }
 
-// Utility methods
-unsigned get_free_memsize()
-{
-        struct mblock *mptr;
-        unsigned size = 0;
+int process2(char c) {
+	int index, random;
+	char ibuffer[128];
+	int disk = (int)c;
 
-        for(mptr = memlist.mnext; 
-                mptr != (struct mblock*)NULL; 
-                mptr = mptr->mnext)
-        {
-                size += mptr->mlen;
-        }
-
-        return size;
+	for(index = 0;index < 1024;index++) {
+		random = skewed_rand();
+		read(disk, ibuffer, random);
+	}
+	
+	process_count++;
+	return process_count;
 }
 
-void assert(Bool condition, char* message)
-{
-        if(condition == FALSE)
-        {
-                kprintf("%s\n", message);
-        }
+int process3(char c) {
+	int index, random;
+	char obuffer[128];
+	int disk = (int)c;
+
+	for(index = 0;index < 1024;index++) {
+		random = rand() % 1024;
+		obuffer[0] = random;
+		write(disk, obuffer, random);
+	}
+	process_count++;
+	return process_count;
 }
+

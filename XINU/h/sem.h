@@ -4,7 +4,7 @@
 #define _SEM_H_
 
 #ifndef	NSEM
-#define	NSEM		50	/* number of semaphores, if not defined	*/
+#define	NSEM		2098	/* number of semaphores, if not defined	*/
 #endif
 
 #define	SFREE	'\01'		/* this semaphore is free		*/
