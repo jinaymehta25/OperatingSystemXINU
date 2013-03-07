@@ -1,5 +1,5 @@
 /* create.c - create, newpid */
-    
+
 #include <conf.h>
 #include <i386.h>
 #include <kernel.h>
@@ -25,7 +25,7 @@ SYSCALL create(procaddr,ssize,priority,name,nargs,args)
 					/* array in the code)		*/
 {
 	unsigned long	savsp, *pushsp;
-	STATWORD 	ps;    
+	STATWORD 	ps;
 	int		pid;		/* stores new process id	*/
 	struct	pentry	*pptr;		/* pointer to proc. table entry */
 	int		i;
@@ -58,11 +58,13 @@ SYSCALL create(procaddr,ssize,priority,name,nargs,args)
 	for (i=0 ; i<PNMLEN && (int)(pptr->pname[i]=name[i])!=0 ; i++)
 		;
 	pptr->pprio = priority;
+	pptr->counter = priority;
+	pptr->goodness = 0;
 	pptr->pbase = (long) saddr;
 	pptr->pstklen = ssize;
 	pptr->psem = 0;
 	pptr->phasmsg = FALSE;
-	pptr->plimit = pptr->pbase - ssize + sizeof (long);	
+	pptr->plimit = pptr->pbase - ssize + sizeof (long);
 	pptr->pirmask[0] = 0;
 	pptr->pnxtkin = BADPID;
 	pptr->pdevs[0] = pptr->pdevs[1] = pptr->ppagedev = BADDEV;

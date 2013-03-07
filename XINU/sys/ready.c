@@ -17,7 +17,16 @@ int ready(int pid, int resch)
 		return(SYSERR);
 	pptr = &proctab[pid];
 	pptr->pstate = PRREADY;
+
+	/*Insert during Linux like scheduling policy*/
+	if(getschedclass()==2)
+	{
+	insert(pid,rdyhead,pptr->goodness);
+	}
+	else
+	{
 	insert(pid,rdyhead,pptr->pprio);
+	}
 	if (resch)
 		resched();
 	return(OK);

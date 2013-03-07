@@ -60,6 +60,8 @@ struct	pentry	{
 	int	fildes[_NFILE];		/* file - device translation	*/
 	int	ppagedev;		/* pageing dgram device		*/
 	int	pwaitret;
+	int counter;		/* counts the remaining quantum */
+	int goodness; 		/* determines whether the process can run in this epoch */
 };
 
 
@@ -67,5 +69,10 @@ extern	struct	pentry proctab[];
 extern	int	numproc;		/* currently active processes	*/
 extern	int	nextproc;		/* search point for free slot	*/
 extern	int	currpid;		/* currently executing process	*/
+
+/*Maintains the EPOCH for Linux Scheduling */
+extern int quant;
+extern int schedclass;	/* Determine type of scheduling, 0 refers to deafult XINU scheduling */
+extern int quatnumThreshold; /* Default quantum is 20 */
 
 #endif

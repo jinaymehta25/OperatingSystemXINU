@@ -1,0 +1,45 @@
+1. What are the advantages and disadvantages of each of the two scheduling policies? Also, give the advantages and disadvantages of the round robin scheduling policy originally implemented in Xinu.
+ANS
+	Aging scheduling policy
+	
+	Advantages:	a. A low priority process will not suffer from starvation.
+			b. It helps to decrease, or age, the priority of longer running process and improve response times of shoter running 
+			   processes.
+			
+	Disadvantages:  a. A higher priority process may have to wait longer as there might be a smaller base priority process ahead in the 
+			   ready queue due to its high runtime priority because of aging.
+			b. May not provide any response time improvement.  
+			c. More complex than a current XINU round robin sceduling policy.
+
+	LINUX like sceduler
+	
+	Advantages:     a. A low priority process does not suffer from starvation.
+			b. It helps to decrease priority, Goodness, of longer running process and improves response times of shoter running
+			   processes. 
+	
+	Disadvantages:  a. For each process preemption, scheduler has to compare and compute the goodness of all processes in the queue
+			   which is an   overhead
+			b. More complex to implement than current XINU round robin scheduling policy and Aging scheduling policy.
+			
+	Round Robin XINU Scheduler
+	
+	Advantages:	a. Highest priority process is always executed first. Round robin policy is implemented in case of same highest 
+			   priorities.
+			b. Easy to implement   
+		
+	Disadvantages:  a. If the timeslice is too less than there is a overhead of context switching.
+			b. If the timeslice is high then lower priority processes may suffer from starvation.
+
+2. Describe the way each of the schedulers affects the NULL process.
+ANS
+
+	Both policies will not execute NULL process i.e. Null process is not affected at all by the two scheduling policies.
+	
+	Aging Sceduling Policy  
+	
+		In aging scheduling policy, we multiply the runtime priorities of all ready processes in the ready queue by a exponential factor i.e. 1.2. However, since the priority of the NULL Process is 0 which when multiplied by 1.2 i.e. 0 * 1.2 =0, which was its original priority. So aging policy does not change the priority of the NULL process which as before has the least priority which is 0.
+	
+	
+	Linux-like Scheduler  
+		
+		This policy maintains the ready queue sorted on goodness rather than on priority and hence many processes can have a goodness of 0. Since a NULL process also have a Goodness of 0 then there may arise a posiblity of it getting executed. To avoid this, when all the process have a goodness of 0, we conclude that it is time to create a new epoch and thus update GOODNESS value of every READY process. The GOODNESS of every READY process is calculated with the help of base priority and as the base priority of the NULL process is 0, its GOODNESS is also 0,thereby eliminating the possiblity of NULL process getting executed. 

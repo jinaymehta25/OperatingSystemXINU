@@ -15,9 +15,9 @@
 #include <stdio.h>
 
 /*#define DETAIL */
-#define HOLESIZE	(600)	
+#define HOLESIZE	(600)
 #define	HOLESTART	(640 * 1024)
-#define	HOLEEND		((1024 + HOLESIZE) * 1024)  
+#define	HOLEEND		((1024 + HOLESIZE) * 1024)
 
 extern	int	main();			/* address of user's main prog	*/
 extern	int	start();
@@ -45,6 +45,11 @@ int	numproc;		/* number of live user processes	*/
 int	currpid;		/* id of currently running process	*/
 int	reboot = 0;		/* non-zero after first boot		*/
 int	console_dev;		/* console device			*/
+
+/* initialize Linux like scheduling variables */
+int quant;
+int schedclass;
+int	quatnumThreshold;
 
 int	rdyhead, rdytail;	/* head/tail of ready list (q indicies)	*/
 char	vers[100];		/* Xinu version printed at startup	*/
@@ -74,7 +79,7 @@ int nulluser()				/* babysit CPU when no one home */
 	console_dev = SERIAL0;
 
 	initevec();
-	
+
 	sysinit();
 
 	sprintf(vers, "Xinu Version %s", VERSION);
@@ -87,25 +92,25 @@ int nulluser()				/* babysit CPU when no one home */
 
 	kprintf("%d bytes real mem\n",
 		(unsigned long) maxaddr+1);
-#ifdef DETAIL	
+#ifdef DETAIL
 	kprintf("    %d", (unsigned long) 0);
 	kprintf(" to %d\n", (unsigned long) (maxaddr) );
-#endif	
+#endif
 
 	kprintf("%d bytes Xinu code\n",
 		(unsigned long) ((unsigned long) &end - (unsigned long) start));
-#ifdef DETAIL	
+#ifdef DETAIL
 	kprintf("    %d", (unsigned long) start);
 	kprintf(" to %d\n", (unsigned long) &end );
 #endif
 
-#ifdef DETAIL	
+#ifdef DETAIL
 	kprintf("%d bytes user stack/heap space\n",
 		(unsigned long) ((unsigned long) maxaddr - (unsigned long) &end));
 	kprintf("    %d", (unsigned long) &end);
 	kprintf(" to %d\n", (unsigned long) maxaddr);
-#endif	
-	
+#endif
+
 	kprintf("clock %sabled\n", clkruns == 1?"en":"dis");
 	enable();		/* enable interrupts */
 
@@ -134,6 +139,11 @@ LOCAL int sysinit()
 	nextsem = NSEM-1;
 	nextqueue = NPROC;		/* q[0..NPROC-1] are processes */
 
+	/* initialize Linux like scheduling variables */
+	 quant = 20;
+	 schedclass = 0;	/* Determine type of scheduling, 0 refers to deafult XINU scheduling */
+	 quatnumThreshold = 90; /* Default quantum is 90 */
+
 	/* initialize free memory list */
 	/* PC version has to pre-allocate 640K-1024K "hole" */
 	if (maxaddr+1 > (char *)HOLESTART) {
@@ -154,7 +164,7 @@ LOCAL int sysinit()
 		mptr->mlen = (int) truncew((unsigned)maxaddr - (int)&end -
 			NULLSTK);
 	}
-	
+
 
 	for (i=0 ; i<NPROC ; i++)	/* initialize process table */
 		proctab[i].pstate = PRFREE;
@@ -193,7 +203,7 @@ LOCAL int sysinit()
 //	ripinit();
 
 #ifdef NDEVS
-	for (i=0 ; i<NDEVS ; i++ ) {	    
+	for (i=0 ; i<NDEVS ; i++ ) {
 	    init_dev(i);
 	}
 #endif
@@ -227,7 +237,7 @@ long sizmem()
 	unsigned char	*ptr, *start, stmp, tmp;
 	int		npages;
 
-	return 4096; 
+	return 4096;
 
 	start = ptr = 0;
 	npages = 0;

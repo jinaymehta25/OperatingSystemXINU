@@ -12,7 +12,7 @@
  */
 SYSCALL chprio(int pid, int newprio)
 {
-	STATWORD ps;    
+	STATWORD ps;
 	struct	pentry	*pptr;
 
 	disable(ps);
@@ -21,6 +21,15 @@ SYSCALL chprio(int pid, int newprio)
 		restore(ps);
 		return(SYSERR);
 	}
+
+
+	/*To change runtime priority during Aging scheduling policy */
+	if(getschedclass()==1 && pptr->pstate==PRREADY)
+	{
+		dequeue(pid);
+		insert(pid,rdyhead,newprio);
+	}
+
 	pptr->pprio = newprio;
 	restore(ps);
 	return(newprio);
