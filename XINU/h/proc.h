@@ -38,6 +38,17 @@
 
 #define	isbadpid(x)	(x<=0 || x>=NPROC)
 
+
+/* process heap memory list */
+
+struct pheapmemlist
+{
+	unsigned nbytes;
+	WORD* phmemaddrs;
+	struct pheapmemlist *next;
+};
+
+#define KILL_RM -10000
 /* process table entry */
 
 struct	pentry	{
@@ -60,6 +71,7 @@ struct	pentry	{
 	int	fildes[_NFILE];		/* file - device translation	*/
 	int	ppagedev;		/* pageing dgram device		*/
 	int	pwaitret;
+	struct pheapmemlist *phmemlist;		/* Heap Memory List */
 };
 
 
