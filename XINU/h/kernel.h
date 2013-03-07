@@ -171,3 +171,7 @@ DEVCALL seek(int descrp, long pos);
 DEVCALL write(int descrp, void *buf, int count);
 
 #endif
+
+#ifndef NLOCKS
+#define NLOCKS 50
+#endif

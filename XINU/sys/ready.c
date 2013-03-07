@@ -2,6 +2,7 @@
 
 #include <conf.h>
 #include <kernel.h>
+#include <lock.h>
 #include <proc.h>
 #include <q.h>
 
@@ -17,7 +18,10 @@ int ready(int pid, int resch)
 		return(SYSERR);
 	pptr = &proctab[pid];
 	pptr->pstate = PRREADY;
+	if(pptr->pinh==0)
 	insert(pid,rdyhead,pptr->pprio);
+	else
+	insert(pid,rdyhead,pptr->pinh);
 	if (resch)
 		resched();
 	return(OK);

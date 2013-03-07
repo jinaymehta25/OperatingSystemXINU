@@ -58,8 +58,12 @@ struct	pentry	{
 	Bool	ptcpumode;		/* proc is in TCP urgent mode	*/
 	short	pdevs[2];		/* devices to close upon exit	*/
 	int	fildes[_NFILE];		/* file - device translation	*/
-	int	ppagedev;		/* pageing dgram device		*/
-	int	pwaitret;
+	int	ppagedev;		/* pageing dgram device		*/	
+	int	pwaitret; /* Wait status */
+	int pinh;  /* Priority Inversion Handling*/
+	int plwtype;  /* lock wait type */
+	int pacl[NLOCKS]; /* List of all acquired Locks*/
+	int plock; /*lock if process waiting*/
 };
 
 

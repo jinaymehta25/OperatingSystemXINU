@@ -6,11 +6,11 @@
 /* q structure declarations, constants, and inline procedures		*/
 
 #ifndef	NQENT
-#define	NQENT		NPROC + NSEM + NSEM + 4	/* for ready & sleep	*/
+#define	NQENT		NPROC + NSEM + NSEM + 4	+ NLOCKS + NLOCKS +NLOCKS +NLOCKS   /* for ready, sleep & Locks	*/
 #endif
 
 struct	qent	{		/* one for each process plus two for	*/
-				/* each list				*/
+					/* each list amd two for Locks	*/
 	int	qkey;		/* key on which the queue is ordered	*/
 	int	qnext;		/* pointer to next process or tail	*/
 	int	qprev;		/* pointer to previous process or head	*/

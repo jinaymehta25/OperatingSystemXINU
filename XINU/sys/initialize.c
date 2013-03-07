@@ -5,6 +5,7 @@
 #include <kernel.h>
 #include <mark.h>
 #include <bufpool.h>
+#include <lock.h>
 #include <proc.h>
 #include <sem.h>
 #include <sleep.h>
@@ -15,9 +16,9 @@
 #include <stdio.h>
 
 /*#define DETAIL */
-#define HOLESIZE	(600)	
+#define HOLESIZE	(600)
 #define	HOLESTART	(640 * 1024)
-#define	HOLEEND		((1024 + HOLESIZE) * 1024)  
+#define	HOLEEND		((1024 + HOLESIZE) * 1024)
 
 extern	int	main();			/* address of user's main prog	*/
 extern	int	start();
@@ -25,6 +26,7 @@ extern	int	enable();
 extern	int	pci_init();
 extern	int	mon_init();
 extern	int	ripinit();
+//extern  void linit();
 LOCAL   int	sysinit();
 
 /* Declarations of major kernel variables */
@@ -48,7 +50,7 @@ int	console_dev;		/* console device			*/
 
 int	rdyhead, rdytail;	/* head/tail of ready list (q indicies)	*/
 char	vers[100];		/* Xinu version printed at startup	*/
-
+ 
 /************************************************************************/
 /***				NOTE:				      ***/
 /***								      ***/
@@ -74,7 +76,7 @@ int nulluser()				/* babysit CPU when no one home */
 	console_dev = SERIAL0;
 
 	initevec();
-	
+
 	sysinit();
 
 	sprintf(vers, "Xinu Version %s", VERSION);
@@ -87,28 +89,28 @@ int nulluser()				/* babysit CPU when no one home */
 
 	kprintf("%d bytes real mem\n",
 		(unsigned long) maxaddr+1);
-#ifdef DETAIL	
+#ifdef DETAIL
 	kprintf("    %d", (unsigned long) 0);
 	kprintf(" to %d\n", (unsigned long) (maxaddr) );
-#endif	
+#endif
 
 	kprintf("%d bytes Xinu code\n",
 		(unsigned long) ((unsigned long) &end - (unsigned long) start));
-#ifdef DETAIL	
+#ifdef DETAIL
 	kprintf("    %d", (unsigned long) start);
 	kprintf(" to %d\n", (unsigned long) &end );
 #endif
 
-#ifdef DETAIL	
+#ifdef DETAIL
 	kprintf("%d bytes user stack/heap space\n",
 		(unsigned long) ((unsigned long) maxaddr - (unsigned long) &end));
 	kprintf("    %d", (unsigned long) &end);
 	kprintf(" to %d\n", (unsigned long) maxaddr);
-#endif	
-	
+#endif
+
 	kprintf("clock %sabled\n", clkruns == 1?"en":"dis");
 	enable();		/* enable interrupts */
-
+  
 	open(CONSOLE, console_dev, 0);
 
 	/* create a process to execute the user's main program */
@@ -128,11 +130,14 @@ LOCAL int sysinit()
 	struct	pentry	*pptr;
 	struct	sentry	*sptr;
 	struct	mblock	*mptr;
+	struct  lentry  *lptr;
+
 
 	numproc = 0;			/* initialize system variables */
 	nextproc = NPROC-1;
 	nextsem = NSEM-1;
 	nextqueue = NPROC;		/* q[0..NPROC-1] are processes */
+	nextlck = NLOCKS-1; 
 
 	/* initialize free memory list */
 	/* PC version has to pre-allocate 640K-1024K "hole" */
@@ -154,7 +159,7 @@ LOCAL int sysinit()
 		mptr->mlen = (int) truncew((unsigned)maxaddr - (int)&end -
 			NULLSTK);
 	}
-	
+
 
 	for (i=0 ; i<NPROC ; i++)	/* initialize process table */
 		proctab[i].pstate = PRFREE;
@@ -177,8 +182,10 @@ LOCAL int sysinit()
 		sptr->sqtail = 1 + (sptr->sqhead = newqueue());
 	}
 
+	linit(); /* initialize Locks*/
+	
 	rdytail = 1 + (rdyhead=newqueue());/* initialize ready list */
-
+  	
 #ifdef	MEMMARK
 	_mkinit();			/* initialize memory marking */
 #endif
@@ -193,7 +200,7 @@ LOCAL int sysinit()
 //	ripinit();
 
 #ifdef NDEVS
-	for (i=0 ; i<NDEVS ; i++ ) {	    
+	for (i=0 ; i<NDEVS ; i++ ) {
 	    init_dev(i);
 	}
 #endif
@@ -227,7 +234,7 @@ long sizmem()
 	unsigned char	*ptr, *start, stmp, tmp;
 	int		npages;
 
-	return 4096; 
+	return 4096;
 
 	start = ptr = 0;
 	npages = 0;

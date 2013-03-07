@@ -3,6 +3,7 @@
 #include <conf.h>
 #include <i386.h>
 #include <kernel.h>
+#include <lock.h>
 #include <proc.h>
 #include <sem.h>
 #include <mem.h>
@@ -66,8 +67,11 @@ SYSCALL create(procaddr,ssize,priority,name,nargs,args)
 	pptr->pirmask[0] = 0;
 	pptr->pnxtkin = BADPID;
 	pptr->pdevs[0] = pptr->pdevs[1] = pptr->ppagedev = BADDEV;
-
-		/* Bottom of stack */
+	pptr->pinh = 0;
+	for(i=0;i<NLOCKS;i++)
+	pptr->pacl[i]= -1;
+	pptr->plock = -1;
+	/* Bottom of stack */
 	*saddr = MAGIC;
 	savsp = (unsigned long)saddr;
 

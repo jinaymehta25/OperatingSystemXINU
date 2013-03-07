@@ -2,6 +2,7 @@
 
 #include <conf.h>
 #include <kernel.h>
+#include <lock.h>
 #include <proc.h>
 #include <sem.h>
 #include <mem.h>
@@ -18,6 +19,7 @@ SYSCALL kill(int pid)
 	STATWORD ps;    
 	struct	pentry	*pptr;		/* points to proc. table for pid*/
 	int	dev;
+	int i;
 
 	disable(ps);
 	if (isbadpid(pid) || (pptr= &proctab[pid])->pstate==PRFREE) {
@@ -37,6 +39,11 @@ SYSCALL kill(int pid)
 	if (! isbaddev(dev) )
 		close(dev);
 	
+	/* Release All Acquired Locks*/
+	for(i=0;i<NLOCKS;i++)
+	if(pptr->pacl[i]!=-1)
+	releaseall(1,pptr->pacl[i]);
+
 	send(pptr->pnxtkin, pid);
 
 	freestk(pptr->pbase, pptr->pstklen);
@@ -46,6 +53,7 @@ SYSCALL kill(int pid)
 			resched();
 
 	case PRWAIT:	semaph[pptr->psem].semcnt++;
+
 
 	case PRREADY:	dequeue(pid);
 			pptr->pstate = PRFREE;
