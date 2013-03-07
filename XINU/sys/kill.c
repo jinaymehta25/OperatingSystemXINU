@@ -40,9 +40,6 @@ SYSCALL kill(int pid)
 	send(pptr->pnxtkin, pid);
 
 	freestk(pptr->pbase, pptr->pstklen);
-	disable(ps); /* To keep the function Interrupt Free*/
-	freememgb(pptr->phmemlist, KILL_RM);
-	disable(ps); /* To keep the function Interrupt Free*/
 	switch (pptr->pstate) {
 
 	case PRCURR:	pptr->pstate = PRFREE;	/* suicide */
